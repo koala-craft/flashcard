@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Card, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
-import { ArrowLeft, RotateCcw, ChevronLeft } from "lucide-react";
+import { ArrowLeft, RotateCcw } from "lucide-react";
 import { Toaster, toast } from "react-hot-toast";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -71,18 +71,17 @@ export function PlayDeck() {
     setIsFlipped(false);
   };
 
-  const handleGoBack = (steps: number) => {
-    const newIndex = Math.max(0, currentIndex - steps);
-    setCurrentIndex(newIndex);
+  const handleGoToCard = (targetIndex: number) => {
+    setCurrentIndex(targetIndex);
     setIsFlipped(false);
   };
 
-  const getBackButtons = () => {
+  const getJumpButtons = () => {
     const buttons: number[] = [];
-    let step = 10;
-    while (step <= currentIndex) {
-      buttons.push(step);
-      step += 10;
+    let target = 10;
+    while (target <= cards.length) {
+      buttons.push(target);
+      target += 10;
     }
     return buttons;
   };
@@ -109,7 +108,8 @@ export function PlayDeck() {
   const currentCard = cards[currentIndex];
   const progress = ((currentIndex + 1) / cards.length) * 100;
   const isLastCard = currentIndex === cards.length - 1;
-  const backButtons = getBackButtons();
+  const isLastCardBack = isLastCard && isFlipped;
+  const jumpButtons = getJumpButtons();
 
   const getInstructionText = () => {
     if (!isFlipped) {
@@ -123,44 +123,9 @@ export function PlayDeck() {
       <Toaster position="bottom-right" />
 
       <header className="px-6 py-4 flex items-center justify-between border-b border-[#2a2b31] bg-[#1f2026]">
-        <div>
+        <div className="flex items-center gap-4">
           <h2 className="text-lg font-medium text-gray-100">{title}</h2>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {backButtons.map((step) => (
-            <Button
-              key={step}
-              variant="ghost"
-              size="sm"
-              onClick={() => handleGoBack(step)}
-              className="text-gray-400 hover:text-gray-100"
-            >
-              <ChevronLeft size={14} />
-              {step}
-            </Button>
-          ))}
-          <Button variant="outline" onClick={handleRestart}>
-            <RotateCcw size={16} /> 最初から
-          </Button>
-          <Button variant="outline" onClick={() => navigate("/")}>
-            <ArrowLeft size={16} /> 終了
-          </Button>
-        </div>
-      </header>
-
-      <div className="w-full h-1 bg-[#2a2b31]">
-        <div
-          className={`h-full transition-all duration-300 ${
-            isLastCard ? "bg-gradient-to-r from-[#eb7e00] via-[#eb5556] to-[#c34c83]" : "bg-[#444651]"
-          }`}
-          style={{ width: `${progress}%` }}
-        />
-      </div>
-
-      <main className="flex-1 flex flex-col items-center justify-center p-6">
-        <div className="w-full max-w-2xl flex flex-col items-center">
-          <div className="w-full flex items-center justify-center mb-4 gap-3">
+          <div className="flex items-center gap-2">
             <span className={`
               px-3 py-1 rounded-full text-sm font-medium
               ${isFlipped 
@@ -170,21 +135,63 @@ export function PlayDeck() {
             `}>
               {isFlipped ? "裏" : "表"}
             </span>
-            <span className={`text-sm ${isLastCard ? "text-[#eb5556] font-medium" : "text-gray-400"}`}>
+            <span className={`text-sm ${isLastCardBack ? "text-[#eb5556] font-medium" : "text-gray-400"}`}>
               {currentIndex + 1} / {cards.length} カード
-              {isLastCard && " (最後)"}
             </span>
           </div>
+        </div>
 
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleRestart}>
+            <RotateCcw size={16} /> 最初から
+          </Button>
+          <Button variant="outline" onClick={() => navigate("/")}>
+            <ArrowLeft size={16} /> 終了
+          </Button>
+        </div>
+      </header>
+
+      {jumpButtons.length > 0 && (
+        <div className="px-6 py-2 flex items-center gap-2 border-b border-[#2a2b31] bg-[#1f2026]">
+          <span className="text-xs text-gray-400 mr-2">移動:</span>
+          {jumpButtons.map((target) => (
+            <button
+              key={target}
+              onClick={() => handleGoToCard(target - 1)}
+              className={`
+                px-3 py-1 rounded text-xs transition
+                ${currentIndex === target - 1
+                  ? "bg-[#444651] text-white"
+                  : "text-gray-400 hover:text-gray-100 hover:bg-[#2a2c33]"
+                }
+              `}
+            >
+              {target}枚目
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="w-full h-1 bg-[#2a2b31]">
+        <div
+          className={`h-full transition-all duration-300 ${
+            isLastCardBack ? "bg-gradient-to-r from-[#eb7e00] via-[#eb5556] to-[#c34c83]" : "bg-[#444651]"
+          }`}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
+      <main className="flex-1 flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-2xl flex flex-col items-center">
           <Card
             className={`
               w-full
               min-h-[300px]
               cursor-pointer
               transition-all duration-300
-              ${isLastCard
-                ? "border-2 border-[#eb5556] bg-[#2a2630] hover:border-[#eb7e00] hover:bg-[#2d2835] shadow-lg shadow-[#eb5556]/10"
-                : "border border-[#2a2b31] bg-[#25262c] hover:border-[#3a3c45] hover:bg-[#262832]"
+              ${isLastCardBack
+                ? "border-2 border-[#eb5556] bg-[#2a2630] shadow-lg shadow-[#eb5556]/10"
+                : "border border-[#2a2b31] bg-[#25262c]"
               }
             `}
             onClick={handleCardClick}
@@ -196,7 +203,7 @@ export function PlayDeck() {
             </CardContent>
           </Card>
 
-          <p className="text-sm text-gray-400 mt-6">
+          <p className={`text-sm mt-6 ${isLastCardBack ? "text-[#eb5556] font-medium" : "text-gray-400"}`}>
             {getInstructionText()}
           </p>
         </div>
